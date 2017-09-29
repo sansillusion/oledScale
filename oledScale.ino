@@ -6,6 +6,7 @@
 */
 
 //#include <Arduino.h>
+#include <EEPROM.h>
 #include <U8g2lib.h>
 #include "HX711.h"
 #include <Wire.h>
@@ -14,12 +15,13 @@
 #define CLK  4
 
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
-
 HX711 scale(DOUT, CLK);
 
 float calibration_factor = -1815; //ok for my 1kg load cell
+float romread = 0;
 const byte interruptPin = 2;
 int taremoi = 1;
+
 void setup() {
   u8g2.begin();
 
@@ -29,6 +31,13 @@ void setup() {
   Serial.println("After readings begin, place known weight on scale");
   Serial.println("Press + or a to increase calibration factor");
   Serial.println("Press - or z to decrease calibration factor");
+
+  EEPROM.get( 0, romread );
+  if (romread == romread) {
+    calibration_factor = romread;
+    Serial.println(romread);
+  }
+
   scale.set_scale();
   pinMode(interruptPin, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(interruptPin), tare, CHANGE);
@@ -82,9 +91,12 @@ void loop() {
   if (Serial.available())
   {
     char temp = Serial.read();
-    if (temp == '+' || temp == 'a')
+    if (temp == '+' || temp == 'a') {
       calibration_factor += 10;
-    else if (temp == '-' || temp == 'z')
+      EEPROM.put(0, calibration_factor);
+    } else if (temp == '-' || temp == 'z') {
       calibration_factor -= 10;
+      EEPROM.put(0, calibration_factor);
+    }
   }
 }
